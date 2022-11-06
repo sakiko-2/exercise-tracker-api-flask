@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from flask_marshmallow import Marshmallow
 import os
+import datetime
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -60,6 +61,33 @@ def create_user():
                   "_id": new_user._id
                 }
             
+
+@app.route("/api/users/<int:_id>/exercises", methods=["POST"])
+def add_exercise(_id: int):
+    description = request.form["description"]
+    duration = request.form["duration"]
+    dateinput = request.form["date"]
+    
+    if dateinput:
+        date = datetime.datetime.strptime(dateinput, "%Y-%m-%d")
+    else:
+        date = datetime.datetime.now()
+    
+    user = User.query.filter_by(_id=_id).first()
+
+    new_exercise = Exercise(description=description, duration=duration, date=date, user_id=user._id)
+
+    db.session.add(new_exercise)
+    db.session.commit()
+
+    return {
+        "username": user.username,
+        "description": new_exercise.description,
+        "duration": new_exercise.duration,
+        "date": new_exercise.date.strftime("%a %b %d %Y"),
+        "_id": _id
+    }
+
 
 class User(db.Model):
     __tablename__ = "users"
