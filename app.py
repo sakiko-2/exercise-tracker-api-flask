@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from flask_marshmallow import Marshmallow
@@ -29,6 +29,37 @@ def db_drop():
 def index():
     return jsonify(message="Welcome to the Exercise Tracker API.")
 
+
+@app.route("/api/users", methods=["GET"])
+def users():
+    users_list = User.query.all()
+    result = users_schema.dump(users_list)
+    return jsonify(result)
+
+
+@app.route("/api/users", methods=["POST"])
+def create_user():
+    username = request.form["username"]
+    user = User.query.filter_by(username=username).first()
+
+    if not username:
+        return jsonify(message="Username is required.")
+    else:
+        if user:
+            return jsonify(message="The username " + user.username + " is already registered."), 409
+        else:
+            try:
+                new_user = User(username=username)
+                db.session.add(new_user)
+                db.session.commit()
+            except:
+                return jsonify(message="Something went wrong.")
+            else:
+                return {
+                  "username": new_user.username,
+                  "_id": new_user._id
+                }
+            
 
 class User(db.Model):
     __tablename__ = "users"
