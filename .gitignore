@@ -1,0 +1,11 @@
+# Environments
+venv/
+
+# Flask
+instance/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# database
+*.db
