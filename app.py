@@ -28,7 +28,7 @@ def db_drop():
 
 @app.route("/")
 def index():
-    return jsonify(message="Welcome to the Exercise Tracker API.")
+    return jsonify(message="Welcome to the Exercise Tracker API."), 200
 
 
 @app.route("/api/users", methods=["GET"])
@@ -59,7 +59,7 @@ def create_user():
                 return {
                   "username": new_user.username,
                   "_id": new_user._id
-                }
+                }, 201
             
 
 @app.route("/api/users/<int:_id>/exercises", methods=["POST"])
@@ -67,25 +67,66 @@ def add_exercise(_id: int):
     description = request.form["description"]
     duration = request.form["duration"]
     dateinput = request.form["date"]
-    
+
     if dateinput:
         date = datetime.datetime.strptime(dateinput, "%Y-%m-%d")
     else:
         date = datetime.datetime.now()
     
+    try:
+        user = User.query.filter_by(_id=_id).first()
+
+        new_exercise = Exercise(description=description, duration=duration, date=date, user_id=user._id)
+
+        db.session.add(new_exercise)
+        db.session.commit()
+    except:
+        return jsonify(message="Something went wrong.")
+    else:
+        return {
+            "username": user.username,
+            "description": new_exercise.description,
+            "duration": new_exercise.duration,
+            "date": new_exercise.date.strftime("%a %b %d %Y"),
+            "_id": _id
+        }, 201
+
+
+@app.route("/api/users/<int:_id>/logs", methods=["GET"])
+def logs(_id: int):
+    from_input = request.args.get("from")
+    start = datetime.datetime.strptime(from_input, "%Y-%m-%d") if from_input else ""
+    
+    to_input = request.args.get("to")
+    to = datetime.datetime.strptime(to_input, "%Y-%m-%d") if to_input else ""
+    
+    limit = request.args.get("limit")
     user = User.query.filter_by(_id=_id).first()
+    logs = Exercise.query.filter_by(user_id=user._id)
 
-    new_exercise = Exercise(description=description, duration=duration, date=date, user_id=user._id)
+    if start:
+        logs = logs.filter(Exercise.date >= start)
+    if to:
+        logs = logs.filter(Exercise.date <= to)
+    if limit:
+        logs = logs.limit(limit)
 
-    db.session.add(new_exercise)
-    db.session.commit()
+    count = logs.count()
+    
+    formatted_logs = []
+
+    for log in logs:
+        formatted_logs.append({
+          "description": log.description,
+          "duration": log.duration,
+          "date": log.date.strftime("%a %b %d %Y")
+        })
 
     return {
         "username": user.username,
-        "description": new_exercise.description,
-        "duration": new_exercise.duration,
-        "date": new_exercise.date.strftime("%a %b %d %Y"),
-        "_id": _id
+        "count": count,
+        "_id": user._id,
+        "logs": formatted_logs
     }
 
 
